@@ -58,6 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChangeLog.cs" />
+    <Compile Include="ChangeTracker.cs" />
     <Compile Include="Data1.cs" />
     <Compile Include="DataService.cs" />
     <Compile Include="Form1Cli.cs">
