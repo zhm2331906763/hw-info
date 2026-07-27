@@ -142,21 +142,39 @@ namespace HW_info
                     {
                         if (WebApi != null)
                         {
-                            var result = WebApi.HandleRequest(context.Request);
                             var path = context.Request.Url.AbsolutePath;
-                            if (path == "/api/export/csv")
+
+                            //二进制导出（XLSX）
+                            if (WebApi.TryGetBinaryExport(path, out var binData, out var binContentType))
                             {
-                                context.Response.ContentType = "text/csv; charset=utf-8";
-                                context.Response.ContentEncoding = Encoding.UTF8;
+                                var dateStr = DateTime.Now.ToString("yyyyMMdd");
+                                context.Response.ContentType = binContentType;
+                                var encodedName = Uri.EscapeDataString($"硬件资产信息表-{dateStr}.xlsx");
+                                context.Response.Headers["Content-Disposition"] = $"attachment; filename=\"{dateStr}.xlsx\"; filename*=UTF-8''{encodedName}";
+                                context.Response.ContentLength64 = binData.Length;
+                                using (var stream = context.Response.OutputStream)
+                                    stream.Write(binData, 0, binData.Length);
                             }
                             else
                             {
-                                context.Response.ContentType = "application/json; charset=utf-8";
+                                var result = WebApi.HandleRequest(context.Request);
+
+                                if (path == "/api/export/csv")
+                                    context.Response.ContentType = "text/csv; charset=utf-8";
+                                else if (path.EndsWith(".css"))
+                                    context.Response.ContentType = "text/css; charset=utf-8";
+                                else if (path.EndsWith(".js"))
+                                    context.Response.ContentType = "application/javascript; charset=utf-8";
+                                else if (path.EndsWith(".html") || path == "/")
+                                    context.Response.ContentType = "text/html; charset=utf-8";
+                                else
+                                    context.Response.ContentType = "application/json; charset=utf-8";
+
+                                var bytes = Encoding.UTF8.GetBytes(result);
+                                context.Response.ContentLength64 = bytes.Length;
+                                using (var stream = context.Response.OutputStream)
+                                    stream.Write(bytes, 0, bytes.Length);
                             }
-                            var bytes = Encoding.UTF8.GetBytes(result);
-                            context.Response.ContentLength64 = bytes.Length;
-                            using (var stream = context.Response.OutputStream)
-                                stream.Write(bytes, 0, bytes.Length);
                         }
                         else
                         {

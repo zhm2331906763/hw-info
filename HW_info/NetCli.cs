@@ -121,7 +121,7 @@ namespace HW_info
         public static bool Send(string text, string ip, int port)
         {
             string result = UdpSend(text, ip, port);
-            string url = $"http://{ip}:{NetSvr.Port}/Datas/Add";
+            string url = $"http://{ip}:{NetSvr.Port}/api/datas/add";
             //text = JsonConvert.Serialize(XmlConvert.Deserialize<MyData>(text));
             if (result == null) result = WebSend(text, url);
             return result != null;

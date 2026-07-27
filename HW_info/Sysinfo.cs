@@ -33,18 +33,26 @@ namespace HW_info
                         {
                             //ip 为 数组 
                             var v = prop.IsArray ? string.Join("|", prop.Value as string[]) : prop.Value;
-                            //内存，硬盘 容量处理
+                            //容量处理：硬盘用1000(厂商标称)，内存用1024(二进制)
                             if (prop.Name == "Size" || prop.Name == "Capacity")
                             {
-                                string[] unit = { "B", "K", "M", "G", "T", "P" };
                                 long.TryParse(v.ToString(), out long size);
+                                int divisor = prop.Name == "Size" ? 1000 : 1024;
+                                string[] unit = { "B", "K", "M", "G", "T", "P" };
                                 int i = 0;
-                                while (size >= 1000 && i < unit.Length)
+                                while (size >= divisor && i < unit.Length)
                                 {
-                                    size /= 1000;
+                                    size /= divisor;
                                     i++;
                                 }
                                 v = $"[{size}{unit[i]}]";
+                            }
+                            //内存速率补单位
+                            if (prop.Name == "Speed" || prop.Name == "ConfiguredClockSpeed")
+                            {
+                                var sv = Convert.ToString(v).Trim();
+                                if (!string.IsNullOrEmpty(sv) && sv != "0" && !sv.Contains("MHz"))
+                                    v = $"{sv}MHz";
                             }
                             var value = Convert.ToString(v).Trim();
                             list2.Add(value);
@@ -184,7 +192,19 @@ namespace HW_info
         /// <returns></returns>
         public static string GetVideoInfo()
         {
-            string queryString = "SELECT Caption FROM Win32_VideoController where NOT PNPDeviceID LIKE 'ROOT%'";  //排除虚拟设备
+            //只保留独显：排除虚拟设备、远程桌面、CPU集显、微软基础显示
+            string queryString = @"
+                SELECT Caption FROM Win32_VideoController 
+                WHERE NOT PNPDeviceID LIKE 'ROOT%'
+                AND NOT Caption LIKE '%Virtual%'
+                AND NOT Caption LIKE '%Remote%'
+                AND NOT Caption LIKE '%RayLink%'
+                AND NOT Caption LIKE '%Basic Display%'
+                AND NOT Caption LIKE '%Microsoft%'
+                AND NOT Caption LIKE 'Intel(R)%HD%'
+                AND NOT Caption LIKE 'Intel(R)%Iris%'
+                AND NOT Caption LIKE 'Intel(R)%UHD%'
+                AND NOT Caption LIKE '%RDP%'";
             return GetWmiInfo(queryString);
         }
 
@@ -307,8 +327,9 @@ namespace HW_info
         /// <returns></returns>
         public static string GetMemoryInfo()
         {
-            string queryString = "SELECT Manufacturer,PartNumber,Capacity FROM Win32_PhysicalMemory";
-            return GetWmiInfo(queryString);
+            string queryString = "SELECT Manufacturer,PartNumber,Capacity,Speed,ConfiguredClockSpeed FROM Win32_PhysicalMemory";
+            var raw = GetWmiInfo(queryString);
+            return raw.Replace(" 0MHz", "").Replace(" 0", "").Trim();
         }
 
 

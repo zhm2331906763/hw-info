@@ -128,6 +128,28 @@ namespace HW_info
             miAutoStart.Checked = enable;
         }
 
+        private void MiHelp_Click(object sender, EventArgs e)
+        {
+            var msg = "HW-info 硬件资产管理系统 v2.0\r\n\r\n"
+                + "【服务端启动】\r\n"
+                + "  HW-info-svr.exe -svr          控制台+托盘模式\r\n"
+                + "  HW-info-svr.exe -install      安装Windows服务(开机自启)\r\n"
+                + "  HW-info-svr.exe -uninstall    卸载服务\r\n\r\n"
+                + "【客户端部署】\r\n"
+                + "  将 exe 重命名: HW-info-<IP十进制数字>.exe\r\n"
+                + "  例: 服务器 192.168.1.100 → 3232235876\r\n"
+                + "  HW-info-3232235876.exe\r\n\r\n"
+                + "  或用命令行:\r\n"
+                + "  HW-info-svr.exe --ip 192.168.1.100\r\n\r\n"
+                + "【管理后台】\r\n"
+                + "  http://本机IP:51528\r\n\r\n"
+                + "【静默提交(脚本用)】\r\n"
+                + "  --ip <IP> --name <姓名> --addr <位置> [--desc <备注>]\r\n\r\n"
+                + "【数据文件】\r\n"
+                + "  HW_info.db 与 exe 同目录，备份此文件即可";
+            MessageBox.Show(msg, "使用说明", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private void MiExit_Click(object sender, EventArgs e)
         {
             _statusTimer?.Dispose();

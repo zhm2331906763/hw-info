@@ -118,40 +118,54 @@ body {
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-sm { padding: 4px 10px; font-size: 12px; }
 
+.table-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
 .table-container {
   background: var(--card-bg);
   border-radius: 12px;
   border: 1px solid var(--border);
   overflow: auto;
+  max-height: calc(100vh - 280px);
 }
+
+.table-container::-webkit-scrollbar { width: 6px; height: 6px; }
+.table-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
-thead { background: #f8fafc; position: sticky; top: 0; z-index: 1; }
+thead { position: sticky; top: 0; z-index: 10; }
 
 th {
-  padding: 10px 12px;
+  padding: 12px 14px;
   text-align: left;
-  font-weight: 600;
-  color: var(--text-muted);
-  border-bottom: 2px solid var(--border);
+  font-weight: 700;
+  color: #fff;
+  background: var(--sidebar-bg);
+  border-bottom: 2px solid #334155;
   white-space: nowrap;
-  cursor: pointer;
   user-select: none;
+  font-size: 12px;
+  letter-spacing: 0.3px;
 }
 
-th:hover { color: var(--text); }
-
 td {
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  max-width: 200px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 12px;
+  color: var(--text);
 }
 
-tr:hover td { background: #f8fafc; }
+tr:nth-child(even) td { background: #f8fafc; }
+tr:hover td { background: #e2e8f0; }
 
 .column-toggle {
   position: relative;
@@ -222,6 +236,40 @@ tr:hover td { background: #f8fafc; }
 }
 
 .back-btn:hover { text-decoration: underline; }
+
+/* Search */
+.search-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  width: 220px;
+  transition: border 0.15s;
+}
+.search-input:focus { border-color: var(--primary); }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.page-size-select {
+  margin: 0 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.page-size-select:focus { border-color: var(--primary); }
 
 @media (max-width: 768px) {
   .sidebar { width: 0; overflow: hidden; }

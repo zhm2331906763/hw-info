@@ -107,6 +107,19 @@ namespace HW_info
             return DataService.ExportCsv();
         }
 
+        public bool TryGetBinaryExport(string path, out byte[] data, out string contentType)
+        {
+            if (path == "/api/export/xlsx")
+            {
+                data = DataService.ExportXlsx();
+                contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                return true;
+            }
+            data = null;
+            contentType = null;
+            return false;
+        }
+
         private string HandleDataAdd(HttpListenerRequest req)
         {
             if (req.HttpMethod != "POST" || !req.HasEntityBody)

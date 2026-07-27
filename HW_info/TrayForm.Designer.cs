@@ -22,17 +22,20 @@ namespace HW_info
             this.miStartService = new System.Windows.Forms.ToolStripMenuItem();
             this.miStopService = new System.Windows.Forms.ToolStripMenuItem();
             this.miRestartService = new System.Windows.Forms.ToolStripMenuItem();
+            this.miHelp = new System.Windows.Forms.ToolStripMenuItem();
             this.miSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.miAutoStart = new System.Windows.Forms.ToolStripMenuItem();
             this.miSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             this.miExit = new System.Windows.Forms.ToolStripMenuItem();
 
             this.contextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.miOpenWeb, this.miSeparator1, this.miServiceStatus,
+                this.miOpenWeb, this.miHelp, this.miSeparator1, this.miServiceStatus,
                 this.miStartService, this.miStopService, this.miRestartService,
                 this.miSeparator2, this.miAutoStart, this.miSeparator3, this.miExit,
             });
 
+            this.miHelp.Text = "使用说明(&H)";
+            this.miHelp.Click += MiHelp_Click;
             this.miOpenWeb.Text = "打开 Web 管理界面(&W)";
             this.miServiceStatus.Text = "服务状态: 未知";
             this.miServiceStatus.Enabled = false;
@@ -67,6 +70,7 @@ namespace HW_info
         private System.Windows.Forms.NotifyIcon notifyIcon;
         private System.Windows.Forms.ContextMenuStrip contextMenu;
         private System.Windows.Forms.ToolStripMenuItem miOpenWeb;
+        private System.Windows.Forms.ToolStripMenuItem miHelp;
         private System.Windows.Forms.ToolStripSeparator miSeparator1;
         private System.Windows.Forms.ToolStripMenuItem miServiceStatus;
         private System.Windows.Forms.ToolStripMenuItem miStartService;

@@ -17,6 +17,18 @@ namespace HW_info
         [STAThread]
         static void Main(string[] args)
         {
+            try
+            {
+                MainInner(args);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"启动失败：{ex.Message}\n\n{ex.GetType().Name}\n{ex.StackTrace}", "HW-info 错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        static void MainInner(string[] args)
+        {
             if (args.Length > 0)
             {
                 var argSet = new HashSet<string>(args, StringComparer.OrdinalIgnoreCase);
@@ -55,7 +67,7 @@ namespace HW_info
 
                 if (argSet.Contains("-svr"))
                 {
-                    RunConsoleServer();
+                    RunConsoleServerWithTray();
                     return;
                 }
 
@@ -77,7 +89,8 @@ namespace HW_info
                 }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new Form1Cli(ip, app));
+                //命令行指定了IP但没有姓名/位置，视为配置错误，打开服务器配置
+                Application.Run(new ServerConfigForm());
                 return;
             }
 
@@ -90,12 +103,8 @@ namespace HW_info
             }
             else
             {
-                var cliApp = Regex.IsMatch(fileName, "app", RegexOptions.IgnoreCase);
-                var cliIp = IPAddress.Broadcast.ToString();
-                var match = Regex.Match(fileName, @"\d{8,}");
-                if (match.Success && IPAddress.TryParse(match.Value, out var cliAddr))
-                    cliIp = cliAddr.ToString();
-                Application.Run(new Form1Cli(cliIp, cliApp));
+                //默认模式：打开服务器配置界面
+                Application.Run(new ServerConfigForm());
             }
         }
 
@@ -128,7 +137,7 @@ namespace HW_info
             DataService.Shutdown();
         }
 
-        static void RunConsoleServerWithTray()
+        public static void RunConsoleServerWithTray()
         {
             var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HW_info.db");
             DataService.Initialize(dbPath);
@@ -164,20 +173,21 @@ namespace HW_info
             var sb = new StringBuilder();
             sb.AppendLine("HW-info 资产管理工具 v2.0");
             sb.AppendLine();
-            sb.AppendLine("服务端参数:");
-            sb.AppendLine($"  {appName} -svr                   启动服务端(控制台模式)");
-            sb.AppendLine($"  {appName} -svr -service          启动服务端(Windows服务模式)");
-            sb.AppendLine($"  {appName} -install               安装Windows服务");
-            sb.AppendLine($"  {appName} -uninstall             卸载Windows服务");
-            sb.AppendLine($"  {appName} -tray                  显示系统托盘");
+            sb.AppendLine("服务端:");
+            sb.AppendLine($"  {appName} -svr              启动服务端(带托盘图标)");
+            sb.AppendLine($"  {appName} -install          安装Windows服务(开机自启)");
+            sb.AppendLine($"  {appName} -uninstall        卸载Windows服务");
             sb.AppendLine();
-            sb.AppendLine("客户端参数:");
-            sb.AppendLine($"  {appName} --ip <IP> [-app]       启动客户端");
-            sb.AppendLine($"  {appName} --ip <IP> [-app] --name <姓名> --addr <位置> [--desc <备注>]");
+            sb.AppendLine("客户端:");
+            sb.AppendLine($"  {appName} --ip <IP>         启动客户端界面");
+            sb.AppendLine($"  {appName} --ip <IP> -app    启动客户端(收集软件列表)");
+            sb.AppendLine($"  {appName} --ip <IP> --name <姓名> --addr <位置>  静默提交");
             sb.AppendLine();
-            sb.AppendLine("示例:");
-            sb.AppendLine($"  {appName} -svr");
-            sb.AppendLine($"  {appName} -install");
+            sb.AppendLine("文件名配置(客户端):");
+            sb.AppendLine($"  HW-info-<十进制IP>[-app].exe");
+            sb.AppendLine($"  例: HW-info-3232235876.exe  → 提交到 192.168.1.100");
+            sb.AppendLine();
+            sb.AppendLine("管理后台: http://本机IP:51528");
             Console.WriteLine(sb.ToString());
             MessageBox.Show(sb.ToString(), "帮助");
         }

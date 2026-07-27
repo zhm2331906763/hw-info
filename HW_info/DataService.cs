@@ -1,19 +1,63 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SQLite;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
+using ClosedXML.Excel;
 
 namespace HW_info
 {
     public static class DataService
     {
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern bool SetDllDirectory(string lpPathName);
+
         private static SQLiteConnection _connection;
+
+        private static void ExtractNativeDll()
+        {
+            var is64 = IntPtr.Size == 8;
+            var archDir = is64 ? "x64" : "x86";
+            var dllName = "SQLite.Interop.dll";
+
+            var targetDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, archDir);
+            var targetPath = Path.Combine(targetDir, dllName);
+
+            if (File.Exists(targetPath)) return;
+
+            Directory.CreateDirectory(targetDir);
+
+            //从嵌入资源提取（构建时嵌入的原生DLL）
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = $"{archDir}.{dllName}";
+            using (var stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream != null)
+                {
+                    using (var fs = new FileStream(targetPath, FileMode.Create, FileAccess.Write))
+                        stream.CopyTo(fs);
+                    return;
+                }
+            }
+
+            //备选：从 exe 同目录的 x64/x86 子目录复制
+            var srcPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, archDir, dllName);
+            if (File.Exists(srcPath))
+                File.Copy(srcPath, targetPath, true);
+        }
 
         public static void Initialize(string dbPath = null)
         {
+            //先提取原生SQLite DLL，否则会报 DllNotFoundException
+            ExtractNativeDll();
+            SetDllDirectory(AppDomain.CurrentDomain.BaseDirectory);
+
             if (string.IsNullOrEmpty(dbPath))
-                dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "hw_info.db");
+                dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HW_info.db");
 
             _connection = new SQLiteConnection($"Data Source={dbPath};Version=3;");
             _connection.Open();
@@ -242,23 +286,123 @@ namespace HW_info
 
         public static string ExportCsv()
         {
+            var cols = new[] {
+                "计算机名","用户名","操作系统","系统安装日期","型号","BIOS日期","序列号",
+                "CPU数量","CPU","主板","内存数量","内存","硬盘数量","硬盘",
+                "显卡","显示器数量","显示器","打印机","网卡","IP地址","MAC地址",
+                "应用程序","姓名","位置","备注","提交时间"
+            };
+            var countFields = new Dictionary<string, string> {
+                { "CPU", "CPU数量" }, { "内存", "内存数量" }, { "硬盘", "硬盘数量" }, { "显示器", "显示器数量" }
+            };
             var sb = new StringBuilder();
-            sb.AppendLine("Id,MacAddress,计算机名,用户名,操作系统,系统安装日期,型号,BIOS日期,序列号,CPU,主板,内存,硬盘,显卡,显示器,打印机,网卡,IP地址,MAC地址,应用程序,姓名,位置,备注,提交时间");
+            sb.AppendLine(string.Join(",", cols.Select(c => EscapeCsv(c))));
 
-            using (var cmd = new SQLiteCommand("SELECT * FROM MachineReports ORDER BY 提交时间 DESC", _connection))
+            using (var cmd = new SQLiteCommand(@"
+                SELECT 计算机名,用户名,操作系统,系统安装日期,型号,BIOS日期,序列号,CPU,主板,内存,硬盘,显卡,显示器,打印机,网卡,IP地址,MAC地址,应用程序,姓名,位置,备注,提交时间
+                FROM MachineReports
+                WHERE Id IN (SELECT MAX(Id) FROM MachineReports GROUP BY MacAddress)
+                ORDER BY 提交时间 DESC", _connection))
             using (var reader = cmd.ExecuteReader())
             {
                 while (reader.Read())
                 {
+                    var values = new Dictionary<string, string>();
                     for (int i = 0; i < reader.FieldCount; i++)
+                        values[reader.GetName(i)] = reader[i]?.ToString() ?? "";
+
+                    var row = new List<string>();
+                    foreach (var col in cols)
                     {
-                        if (i > 0) sb.Append(",");
-                        sb.Append(EscapeCsv(reader[i]?.ToString() ?? ""));
+                        if (countFields.ContainsValue(col))
+                        {
+                            var srcCol = countFields.First(kv => kv.Value == col).Key;
+                            var cnt = values.ContainsKey(srcCol) ? values[srcCol].Split('|').Count(s => s.Trim().Length > 0) : 0;
+                            row.Add(cnt.ToString());
+                        }
+                        else
+                        {
+                            row.Add(values.ContainsKey(col) ? values[col] : "");
+                        }
                     }
-                    sb.AppendLine();
+                    sb.AppendLine(string.Join(",", row.Select(v => EscapeCsv(v))));
                 }
             }
             return sb.ToString();
+        }
+
+        public static byte[] ExportXlsx()
+        {
+            var columns = new[] {
+                "计算机名","用户名","操作系统","系统安装日期","型号","BIOS日期","序列号",
+                "CPU数量","CPU","主板","内存数量","内存","硬盘数量","硬盘",
+                "显卡","显示器数量","显示器","打印机","网卡","IP地址","MAC地址",
+                "应用程序","姓名","位置","备注","提交时间"
+            };
+            var countSrc = new Dictionary<string, string> {
+                { "CPU数量", "CPU" }, { "内存数量", "内存" }, { "硬盘数量", "硬盘" }, { "显示器数量", "显示器" }
+            };
+
+            var dt = new DataTable();
+            foreach (var c in columns) dt.Columns.Add(c);
+
+            using (var cmd = new SQLiteCommand(@"
+                SELECT 计算机名,用户名,操作系统,系统安装日期,型号,BIOS日期,序列号,CPU,主板,内存,硬盘,显卡,显示器,打印机,网卡,IP地址,MAC地址,应用程序,姓名,位置,备注,提交时间
+                FROM MachineReports
+                WHERE Id IN (SELECT MAX(Id) FROM MachineReports GROUP BY MacAddress)
+                ORDER BY 提交时间 DESC", _connection))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var raw = new Dictionary<string, string>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                        raw[reader.GetName(i)] = reader[i]?.ToString() ?? "";
+
+                    var row = dt.NewRow();
+                    for (int ci = 0; ci < columns.Length; ci++)
+                    {
+                        var col = columns[ci];
+                        if (countSrc.TryGetValue(col, out var srcCol))
+                        {
+                            raw.TryGetValue(srcCol, out var srcVal);
+                            var items = (srcVal ?? "").Split('|').Where(s => s.Trim().Length > 0).ToArray();
+                            row[ci] = items.Length;
+                        }
+                        else
+                        {
+                            raw.TryGetValue(col, out var val);
+                            row[ci] = (val ?? "").Replace("|", "\n");
+                        }
+                    }
+                    dt.Rows.Add(row);
+                }
+            }
+
+            using (var wb = new XLWorkbook())
+            {
+                var ws = wb.Worksheets.Add("硬件资产信息");
+                ws.Cell(1, 1).InsertTable(dt);
+
+                //设置自动换行
+                ws.Rows().Style.Alignment.WrapText = true;
+
+                //自动调整列宽
+                ws.Columns().AdjustToContents(1, 80);
+
+                //表头样式
+                var headerRow = ws.Row(1);
+                headerRow.Style.Font.Bold = true;
+                headerRow.Style.Fill.BackgroundColor = XLColor.FromHtml("#1e293b");
+                headerRow.Style.Font.FontColor = XLColor.White;
+                headerRow.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+
+                using (var ms = new MemoryStream())
+                {
+                    wb.SaveAs(ms);
+                    return ms.ToArray();
+                }
+            }
         }
 
         public static int GetTotalCount()

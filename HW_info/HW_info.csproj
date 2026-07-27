@@ -52,6 +52,12 @@
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="ClosedXML">
+      <Version>0.102.1</Version>
+    </PackageReference>
+    <PackageReference Include="Costura.Fody">
+      <Version>5.7.0</Version>
+    </PackageReference>
     <PackageReference Include="System.Data.SQLite.Core">
       <Version>1.0.118.0</Version>
     </PackageReference>
@@ -69,11 +75,11 @@
     <Compile Include="TrayForm.Designer.cs">
       <DependentUpon>TrayForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="Form1Cli.cs">
+    <Compile Include="ServerConfigForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form1Cli.Designer.cs">
-      <DependentUpon>Form1Cli.cs</DependentUpon>
+    <Compile Include="ServerConfigForm.Designer.cs">
+      <DependentUpon>ServerConfigForm.cs</DependentUpon>
     </Compile>
     <Compile Include="JsonConvert.cs" />
     <Compile Include="MyData.cs" />
@@ -91,9 +97,6 @@
     <Compile Include="XmlConvert.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Form1Cli.resx">
-      <DependentUpon>Form1Cli.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -107,6 +110,13 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="未命名-1.ico" />
+    <None Include="FodyWeavers.xml" />
+    <EmbeddedResource Include="NativeDlls\x64\SQLite.Interop.dll">
+      <LogicalName>x64.SQLite.Interop.dll</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="NativeDlls\x86\SQLite.Interop.dll">
+      <LogicalName>x86.SQLite.Interop.dll</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
