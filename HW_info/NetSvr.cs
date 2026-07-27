@@ -41,26 +41,8 @@ namespace HW_info
         /// </summary>
         public void Start()
         {
-            //启动服务
+            //启动UDP服务
             Task.Run(() => UdpSvr(Port)).ConfigureAwait(false);
-            //Task.Run(() => TcpSvr(Port)).ConfigureAwait(false);
-
-            //数据上传
-            HttpRouteFunc["/Datas/Add"] = req =>
-            {
-                if (req.HttpMethod == "POST" && req.HasEntityBody)
-                {
-                    var bytes = new byte[req.ContentLength64];
-                    using (var stream = req.InputStream)
-                    {
-                        stream.Read(bytes, 0, bytes.Length);
-                        var args = new NetEventArgs { Buffer = bytes, IPEnd = req.RemoteEndPoint };
-                        NetEvent?.BeginInvoke(this, args, null, null);
-                    }
-                    return Encoding.UTF8.GetString(ReplyOk);
-                }
-                return "Error";
-            };
             //启动Web服务
             Task.Run(() => WebSvr(Port)).ConfigureAwait(false);
         }
@@ -143,10 +125,7 @@ namespace HW_info
             tcpServer.Stop();
         }
 
-        public Dictionary<string, Func<HttpListenerRequest, string>> HttpRouteFunc = new Dictionary<string, Func<HttpListenerRequest, string>>()
-        {
-            ["/hi"] = (req) => "Hello world!"
-        };
+        public WebApi WebApi { get; set; }
 
         public async Task WebSvr(int port)
         {
@@ -161,16 +140,27 @@ namespace HW_info
                 {
                     try
                     {
-                        var path = context.Request.Url.AbsolutePath;
-                        if (HttpRouteFunc != null && HttpRouteFunc.ContainsKey(path))
+                        if (WebApi != null)
                         {
-                            var html = HttpRouteFunc[path]?.Invoke(context.Request);
-                            byte[] bytes = context.Request.ContentEncoding.GetBytes(html);
+                            var result = WebApi.HandleRequest(context.Request);
+                            var path = context.Request.Url.AbsolutePath;
+                            if (path == "/api/export/csv")
+                            {
+                                context.Response.ContentType = "text/csv; charset=utf-8";
+                                context.Response.ContentEncoding = Encoding.UTF8;
+                            }
+                            else
+                            {
+                                context.Response.ContentType = "application/json; charset=utf-8";
+                            }
+                            var bytes = Encoding.UTF8.GetBytes(result);
                             context.Response.ContentLength64 = bytes.Length;
                             using (var stream = context.Response.OutputStream)
-                            {
                                 stream.Write(bytes, 0, bytes.Length);
-                            }
+                        }
+                        else
+                        {
+                            context.Response.StatusCode = 404;
                         }
                     }
                     finally

@@ -1,151 +1,185 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.ServiceProcess;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace HW_info
 {
     static class Program
     {
-
-        /// <summary>
-        /// 应用程序的主入口点。
-        /// </summary>
         [STAThread]
         static void Main(string[] args)
         {
+            if (args.Length > 0)
+            {
+                var argSet = new HashSet<string>(args, StringComparer.OrdinalIgnoreCase);
+                var argDict = args
+                    .Select((a, i) => new { a, i })
+                    .Where(x => x.a.StartsWith("--") && x.i + 1 < args.Length)
+                    .ToDictionary(x => x.a.Substring(2), x => args[x.i + 1]);
+
+                if (argSet.Contains("-svr") && argSet.Contains("-service"))
+                {
+                    ServiceBase.Run(new HwService());
+                    return;
+                }
+
+                if (argSet.Contains("-install"))
+                {
+                    ServiceManager.Install();
+                    Console.WriteLine("Service installed.");
+                    return;
+                }
+
+                if (argSet.Contains("-uninstall"))
+                {
+                    ServiceManager.Uninstall();
+                    Console.WriteLine("Service uninstalled.");
+                    return;
+                }
+
+                if (argSet.Contains("-tray"))
+                {
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    Application.Run(new TrayForm());
+                    return;
+                }
+
+                if (argSet.Contains("-svr"))
+                {
+                    RunConsoleServer();
+                    return;
+                }
+
+                if (argSet.Contains("-?") || argSet.Contains("-h"))
+                {
+                    ShowHelp();
+                    return;
+                }
+
+                var app = argSet.Contains("-app") || argSet.Contains("--app");
+                var ip = IPAddress.Broadcast.ToString();
+                if (argDict.TryGetValue("ip", out var ipStr) && IPAddress.TryParse(ipStr, out var addr))
+                    ip = addr.ToString();
+                if (argDict.TryGetValue("name", out var name) && argDict.TryGetValue("addr", out var addr2))
+                {
+                    argDict.TryGetValue("desc", out var desc);
+                    SendData(app, ip, name, addr2, desc);
+                    return;
+                }
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new Form1Cli(ip, app));
+                return;
+            }
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-
-            //根据参数运行
-            var action = args.Length > 0 ? ParseArguments() : ParseFileName();
-            action.Invoke();
-        }
-
-
-        /// <summary>
-        /// 解析文件名
-        /// </summary>
-        static Action ParseFileName()
-        {
-            //程序文件名
             var fileName = Path.GetFileNameWithoutExtension(Application.ExecutablePath);
-
             if (Regex.IsMatch(fileName, "-svr", RegexOptions.IgnoreCase))
             {
-                //返回服务端
-                return new Action(() => Application.Run(new Form2Svr()));
+                RunConsoleServerWithTray();
             }
             else
             {
-                //是否获取APP列表
-                var app = Regex.IsMatch(fileName, "app", RegexOptions.IgnoreCase);
-                //默认IP
-                var ip = IPAddress.Broadcast.ToString();
-
-                //取十进制IP
+                var cliApp = Regex.IsMatch(fileName, "app", RegexOptions.IgnoreCase);
+                var cliIp = IPAddress.Broadcast.ToString();
                 var match = Regex.Match(fileName, @"\d{8,}");
-                if (match.Success && IPAddress.TryParse(match.Value, out IPAddress iPAddress))
-                {
-                    ip = iPAddress.ToString();
-                }
-
-                //返回客户端
-                return new Action(() => Application.Run(new Form1Cli(ip, app)));
+                if (match.Success && IPAddress.TryParse(match.Value, out var cliAddr))
+                    cliIp = cliAddr.ToString();
+                Application.Run(new Form1Cli(cliIp, cliApp));
             }
         }
 
-
-        /// <summary>
-        /// 解析命令行参数
-        /// </summary>
-        /// <param name="args"></param>
-        static Action ParseArguments()
+        static void RunConsoleServer()
         {
-            //命令行参数
-            var args = Environment.GetCommandLineArgs();
+            var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HW_info.db");
+            DataService.Initialize(dbPath);
 
-            var parameters = new Dictionary<string, string>();
-            for (int i = 0; i < args.Length; i++)
+            var api = new WebApi();
+            var svr = new NetSvr { WebApi = api };
+            svr.NetEvent += (s, e) =>
             {
-                if (args[i].StartsWith("--") && i + 1 < args.Length)
+                var text = Encoding.UTF8.GetString(e.Buffer);
+                var myData = XmlConvert.Deserialize<MyData>(text) ?? JsonConvert.Deserialize<MyData>(text);
+                if (myData != null)
                 {
-                    parameters[args[i].Substring(2)] = args[i + 1];
-                    i++; // 跳过下一个参数（值）
+                    myData.提交时间 = DateTime.Now;
+                    DataService.Add(myData);
+                    ChangeTracker.ProcessNewData(myData);
+                    Console.WriteLine($"Received: {myData.计算机名} ({myData.MAC地址})");
                 }
-                else if (args[i].StartsWith("-"))
-                {
-                    parameters[args[i].Substring(1)] = "true"; // 标记为存在
-                }
-            }
-
-            if (parameters.TryGetValue("?", out _) || parameters.TryGetValue("h", out _))
-            {
-                //启动帮助
-                return Help;
-            }
-
-
-            if (parameters.TryGetValue("svr", out _))
-            {
-                //返回服务端
-                return new Action(() => Application.Run(new Form2Svr()));
-            }
-
-            //是否获取APP列表
-            var app = parameters.TryGetValue("app", out _); 
-
-            //默认IP
-            var ip = IPAddress.Broadcast.ToString();
-            if (parameters.TryGetValue("ip", out string ip1) && IPAddress.TryParse(ip1, out IPAddress address))
-            {
-                ip = address.ToString();
-            }
-
-            //解析姓名，位置
-            if (parameters.TryGetValue("name", out string name) && parameters.TryGetValue("addr", out string addr))
-            {
-                //备注信息
-                parameters.TryGetValue("desc", out string desc);
-                //静默发送
-                return new Action(() => Send(app, ip, name, addr, desc));
-            }
-
-            //返回客户端
-            return new Action(() => Application.Run(new Form1Cli(ip, app)));
-
+            };
+            svr.Start();
+            Console.WriteLine($"HW-info server running on port {NetSvr.Port}...");
+            Console.WriteLine("Press Ctrl+C to stop.");
+            var evt = new ManualResetEvent(false);
+            Console.CancelKeyPress += (s, e) => { e.Cancel = true; evt.Set(); };
+            evt.WaitOne();
+            svr.Close();
+            DataService.Shutdown();
         }
 
-        private static void Help()
+        static void RunConsoleServerWithTray()
         {
-            //帮助信息
-            var appName = AppDomain.CurrentDomain.FriendlyName;
-            var sb = new StringBuilder();
-            sb.AppendLine($"启动服务端:\r\n {appName} -svr");
-            sb.AppendLine();
-            sb.AppendLine($"启动客户端，指定IP，收集应用程序列表:\r\n {appName} --ip <IP> [-app]");
-            sb.AppendLine();
-            sb.AppendLine($"启动客户端静默发送:\r\n {appName} --ip <IP> [-app] --name <姓名> --addr <位置> [--desc <备注>]");
-            sb.AppendLine();
-            Console.WriteLine(sb.ToString());
-            MessageBox.Show(sb.ToString(), "帮助");
+            var dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "HW_info.db");
+            DataService.Initialize(dbPath);
+
+            var api = new WebApi();
+            var svr = new NetSvr { WebApi = api };
+            svr.NetEvent += (s, e) =>
+            {
+                var text = Encoding.UTF8.GetString(e.Buffer);
+                var myData = XmlConvert.Deserialize<MyData>(text) ?? JsonConvert.Deserialize<MyData>(text);
+                if (myData != null)
+                {
+                    myData.提交时间 = DateTime.Now;
+                    DataService.Add(myData);
+                    ChangeTracker.ProcessNewData(myData);
+                }
+            };
+            svr.Start();
+            Application.Run(new TrayForm());
         }
 
-        private static void Send(bool app, string ip, string name, string addr, string desc)
+        static void SendData(bool app, string ip, string name, string addr, string desc)
         {
-            //取数据
             var data = MyData.Get(app);
             data.Set(name, addr, desc);
-
-            //发送
             var xml = data.ToXml();
             NetCli.Send(xml, ip, NetSvr.Port);
         }
 
+        static void ShowHelp()
+        {
+            var appName = AppDomain.CurrentDomain.FriendlyName;
+            var sb = new StringBuilder();
+            sb.AppendLine("HW-info 资产管理工具 v2.0");
+            sb.AppendLine();
+            sb.AppendLine("服务端参数:");
+            sb.AppendLine($"  {appName} -svr                   启动服务端(控制台模式)");
+            sb.AppendLine($"  {appName} -svr -service          启动服务端(Windows服务模式)");
+            sb.AppendLine($"  {appName} -install               安装Windows服务");
+            sb.AppendLine($"  {appName} -uninstall             卸载Windows服务");
+            sb.AppendLine($"  {appName} -tray                  显示系统托盘");
+            sb.AppendLine();
+            sb.AppendLine("客户端参数:");
+            sb.AppendLine($"  {appName} --ip <IP> [-app]       启动客户端");
+            sb.AppendLine($"  {appName} --ip <IP> [-app] --name <姓名> --addr <位置> [--desc <备注>]");
+            sb.AppendLine();
+            sb.AppendLine("示例:");
+            sb.AppendLine($"  {appName} -svr");
+            sb.AppendLine($"  {appName} -install");
+            Console.WriteLine(sb.ToString());
+            MessageBox.Show(sb.ToString(), "帮助");
+        }
     }
 }

@@ -61,29 +61,19 @@
     <Compile Include="ChangeTracker.cs" />
     <Compile Include="Data1.cs" />
     <Compile Include="DataService.cs" />
+    <Compile Include="HwService.cs" />
+    <Compile Include="ServiceManager.cs" />
+    <Compile Include="TrayForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="TrayForm.Designer.cs">
+      <DependentUpon>TrayForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Form1Cli.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Form1Cli.Designer.cs">
       <DependentUpon>Form1Cli.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Form2Svr.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Form2Svr.Designer.cs">
-      <DependentUpon>Form2Svr.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Form4Table.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Form4Table.Designer.cs">
-      <DependentUpon>Form4Table.cs</DependentUpon>
-    </Compile>
-    <Compile Include="Form5Setup.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Form5Setup.Designer.cs">
-      <DependentUpon>Form5Setup.cs</DependentUpon>
     </Compile>
     <Compile Include="JsonConvert.cs" />
     <Compile Include="MyData.cs" />
@@ -97,25 +87,20 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="Sysinfo.cs" />
+    <Compile Include="WebApi.cs" />
     <Compile Include="XmlConvert.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Form1Cli.resx">
       <DependentUpon>Form1Cli.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="Form2Svr.resx">
-      <DependentUpon>Form2Svr.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Form4Table.resx">
-      <DependentUpon>Form4Table.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Form5Setup.resx">
-      <DependentUpon>Form5Setup.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <EmbeddedResource Include="Resources\web_index.html" />
+    <EmbeddedResource Include="Resources\web_app.css" />
+    <EmbeddedResource Include="Resources\web_app.js" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\down.html" />
