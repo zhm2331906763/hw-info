@@ -201,6 +201,7 @@ namespace HW_info
 
         public static MyData GetLatestByMac(string macAddress)
         {
+            if (string.IsNullOrEmpty(macAddress)) return null;
             using (var cmd = new SQLiteCommand(_connection))
             {
                 cmd.CommandText = "SELECT * FROM MachineReports WHERE MacAddress = @MacAddress ORDER BY 提交时间 DESC LIMIT 1";

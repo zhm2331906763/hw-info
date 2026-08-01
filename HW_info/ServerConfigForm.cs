@@ -20,7 +20,18 @@ namespace HW_info
         {
             ServiceManager.Install();
             ServiceManager.StartService();
-            MessageBox.Show("服务已安装并设为开机自启。\n可在托盘右键菜单中启动服务。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("服务已安装并设为开机自启。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void btnUninstall_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show("确认卸载 HW-info 服务？\n服务停止后 Web 后台将无法访问。", "卸载服务",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result == DialogResult.Yes)
+            {
+                ServiceManager.Uninstall();
+                MessageBox.Show("服务已卸载。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private void btnExit_Click(object sender, EventArgs e)

@@ -41,12 +41,11 @@ namespace HW_info
             }
         }
 
-        public static List<ChangeLog> ProcessNewData(MyData newData)
+        public static List<ChangeLog> ProcessNewData(MyData newData, MyData oldData = null)
         {
-            if (string.IsNullOrEmpty(newData?.MAC地址))
+            if (newData == null)
                 return new List<ChangeLog>();
 
-            var oldData = DataService.GetLatestByMac(newData.MAC地址);
             var changes = new List<ChangeLog>(GetChanges(oldData, newData));
 
             if (changes.Count > 0)

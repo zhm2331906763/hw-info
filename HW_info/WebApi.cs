@@ -83,10 +83,11 @@ namespace HW_info
 
         private string HandleChangeLogs(HttpListenerRequest req)
         {
-            var mac = req.QueryString["mac"];
+            var mac = req.QueryString["mac"] ?? "";
             var limitStr = req.QueryString["limit"];
             int limit = 200;
-            int.TryParse(limitStr, out limit);
+            if (!string.IsNullOrEmpty(limitStr))
+                int.TryParse(limitStr, out limit);
 
             var logs = DataService.GetChangeLogs(mac, limit);
             return JsonResponse(logs);
@@ -136,8 +137,9 @@ namespace HW_info
                 return JsonError("Invalid data", 400);
 
             myData.提交时间 = DateTime.Now;
+            var oldData = DataService.GetLatestByMac(myData.MAC地址);
             DataService.Add(myData);
-            var changes = ChangeTracker.ProcessNewData(myData);
+            var changes = ChangeTracker.ProcessNewData(myData, oldData);
 
             return JsonResponse(new { result = "ok", changes = changes.Count });
         }

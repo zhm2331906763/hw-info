@@ -122,9 +122,10 @@ namespace HW_info
                 if (myData != null)
                 {
                     myData.提交时间 = DateTime.Now;
+                    var oldData = DataService.GetLatestByMac(myData.MAC地址);
                     DataService.Add(myData);
-                    ChangeTracker.ProcessNewData(myData);
-                    Console.WriteLine($"Received: {myData.计算机名} ({myData.MAC地址})");
+                    var changes = ChangeTracker.ProcessNewData(myData, oldData);
+                    Console.WriteLine($"Received: {myData.计算机名} ({myData.MAC地址}) changes: {changes.Count}");
                 }
             };
             svr.Start();
@@ -146,14 +147,22 @@ namespace HW_info
             var svr = new NetSvr { WebApi = api };
             svr.NetEvent += (s, e) =>
             {
-                var text = Encoding.UTF8.GetString(e.Buffer);
-                var myData = XmlConvert.Deserialize<MyData>(text) ?? JsonConvert.Deserialize<MyData>(text);
-                if (myData != null)
+                try
                 {
-                    myData.提交时间 = DateTime.Now;
-                    DataService.Add(myData);
-                    ChangeTracker.ProcessNewData(myData);
+                    var text = Encoding.UTF8.GetString(e.Buffer);
+                    var myData = XmlConvert.Deserialize<MyData>(text) ?? JsonConvert.Deserialize<MyData>(text);
+                    if (myData != null)
+                    {
+                        myData.提交时间 = DateTime.Now;
+                        var oldData = DataService.GetLatestByMac(myData.MAC地址);
+                        Console.WriteLine($"[UDP] MAC={myData.MAC地址} old={(oldData!=null?oldData.计算机名:"null")} 硬盘_old={(oldData!=null?oldData.硬盘:"null")} 硬盘_new={myData.硬盘}");
+                        DataService.Add(myData);
+                        var changes = ChangeTracker.ProcessNewData(myData, oldData);
+                        Console.WriteLine($"[UDP] changes={changes.Count}");
+                        foreach (var c in changes) Console.WriteLine($"  变更: {c.FieldName} '{c.OldValue}' -> '{c.NewValue}'");
+                    }
                 }
+                catch (Exception ex) { Console.WriteLine($"[UDP] 错误: {ex.Message}"); }
             };
             svr.Start();
             Application.Run(new TrayForm());

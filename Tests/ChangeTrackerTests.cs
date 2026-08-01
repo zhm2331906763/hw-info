@@ -78,6 +78,54 @@ namespace HW_info.Tests
         }
 
         [Fact]
+        public void GetChanges_Detects_DiskChangeViaPipe()
+        {
+            //模拟完整数据流：获取旧数据→写入新数据→对比变更
+            var mac = "TEST-PIPE-001";
+            var first = new MyData
+            {
+                MAC地址 = mac, 计算机名 = "PC1",
+                CPU = "i5", 内存 = "8GB", 硬盘 = "256GB",
+            };
+            first.提交时间 = DateTime.Now;
+
+            var oldData = ChangeTracker.GetChanges(null, first).ToList();
+            Assert.Empty(oldData); //首次无变化
+
+            var second = new MyData
+            {
+                MAC地址 = mac, 计算机名 = "PC1",
+                CPU = "i5", 内存 = "8GB", 硬盘 = "256GB|1TB",
+            };
+            second.提交时间 = DateTime.Now;
+
+            var changes = ChangeTracker.GetChanges(first, second).ToList();
+            Assert.Single(changes);
+            Assert.Equal("硬盘", changes[0].FieldName);
+            Assert.Equal("256GB", changes[0].OldValue);
+            Assert.Equal("256GB|1TB", changes[0].NewValue);
+        }
+
+        [Fact]
+        public void GetChanges_Detects_MultipleChanges()
+        {
+            var oldData = new MyData
+            {
+                MAC地址 = "M1", CPU = "i5", 内存 = "8GB", 硬盘 = "256GB", 显卡 = "GTX 1060",
+            };
+            var newData = new MyData
+            {
+                MAC地址 = "M1", CPU = "i7", 内存 = "16GB", 硬盘 = "256GB|1TB", 显卡 = "GTX 1060",
+            };
+
+            var changes = ChangeTracker.GetChanges(oldData, newData).ToList();
+            Assert.Equal(3, changes.Count);
+            Assert.Contains(changes, c => c.FieldName == "CPU");
+            Assert.Contains(changes, c => c.FieldName == "内存");
+            Assert.Contains(changes, c => c.FieldName == "硬盘");
+        }
+
+        [Fact]
         public void GetChanges_NullOldData_ReturnsEmpty()
         {
             var newData = new MyData

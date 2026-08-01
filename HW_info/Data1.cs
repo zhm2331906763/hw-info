@@ -16,8 +16,9 @@ namespace HW_info
             if (data != null)
             {
                 data.提交时间 = DateTime.Now;
+                var oldData = DataService.GetLatestByMac(data.MAC地址);
                 DataService.Add(data);
-                ChangeTracker.ProcessNewData(data);
+                ChangeTracker.ProcessNewData(data, oldData);
             }
         }
 

@@ -121,6 +121,18 @@ namespace HW_info
             RefreshServiceStatus();
         }
 
+        private void MiUninstall_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show("确认卸载 HW-info 服务？", "卸载服务",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (result == DialogResult.Yes)
+            {
+                ServiceManager.Uninstall();
+                MessageBox.Show("服务已卸载。", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                RefreshServiceStatus();
+            }
+        }
+
         private void MiAutoStart_Click(object sender, EventArgs e)
         {
             var enable = !IsAutoStartEnabled();
